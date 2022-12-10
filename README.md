@@ -236,6 +236,119 @@ auto eth0
 iface eth0 inet dhcp
 ```
 
+### DNS Server (Eden)
+```
+echo nameserver 192.168.122.1 > /etc/resolv.conf
+apt-get update
+apt-get install bind9 -y
+
+echo '
+options {
+        directory "/var/cache/bind";
+        forwarders {
+                192.168.122.1;
+        };
+        allow-query{any;};
+
+        auth-nxdomain no;    # conform to RFC1035
+        listen-on-v6 { any; };
+};' > /etc/bind/named.conf.options
+service bind9 restart
+```
+
+### DHCP Server (WISE)
+```
+echo nameserver 192.168.122.1 > /etc/resolv.conf
+apt-get update
+apt-get install isc-dhcp-server -y
+
+echo '
+#Forger
+subnet 10.27.7.0 netmask 255.255.255.128 {
+    range 10.27.7.2 10.27.7.126;
+    option routers 10.27.7.1;
+    option broadcast-address 10.27.7.127;
+    option domain-name-servers 10.27.7.130;
+    default-lease-time 600;
+    max-lease-time 7200;
+}
+
+#Desmond
+subnet 10.27.0.0 netmask 255.255.252.0 {
+    range 10.27.0.2 10.27.3.254;
+    option routers 10.27.0.1;
+    option broadcast-address 10.27.3.255;
+    option domain-name-servers 10.27.7.130;
+    default-lease-time 600;
+    max-lease-time 7200;
+}
+
+#Blackbell
+subnet 10.27.4.0 netmask 255.255.254.0 {
+    range 10.27.4.2 10.27.5.254;
+    option routers 10.27.4.1;
+    option broadcast-address 10.27.5.255;
+    option domain-name-servers 10.27.7.130;
+    default-lease-time 600;
+    max-lease-time 7200;
+}
+
+#Briar
+subnet 10.27.6.0 netmask 255.255.255.0 {
+    range 10.27.6.2 10.27.6.254;
+    option routers 10.27.6.1;
+    option broadcast-address 10.27.6.255;
+    option domain-name-servers 10.27.7.130;
+    default-lease-time 600;
+    max-lease-time 7200;
+}
+
+subnet 10.27.7.128 netmask 255.255.255.248 {
+    option routers 10.27.7.129;
+}' > /etc/dhcp/dhcpd.conf
+
+echo '
+INTERFACES="eth0"
+' > /etc/default/isc-dhcp-server
+
+service isc-dhcp-server restart
+```
+
+### DHCP Relay (Semua Router)
+```
+echo nameserver 192.168.122.1 > /etc/resolv.conf
+apt-get update
+apt-get install isc-dhcp-relay -y
+
+echo '
+SERVERS="10.27.7.131"
+INTERFACES="eth0 eth1 eth2 eth3"
+OPTIONS=""
+' > /etc/default/isc-dhcp-relay
+service isc-dhcp-relay restart
+```
+
+### Web Server (SSS dan Garden)
+```
+echo nameserver 192.168.122.1 > /etc/resolv.conf
+apt-get update
+apt-get install apache2 -y
+cp /root/index.html /var/www/html/index.html (ISI HTML)
+echo '
+Listen 80
+Listen 443
+
+<IfModule ssl_module>
+        Listen 443
+</IfModule>
+
+<IfModule mod_gnutls.c>
+        Listen 443
+</IfModule>' > /etc/apache2/ports.conf
+
+service apache2 start
+```
+
 # C. Anya, putri pertama Loid, juga berpesan kepada anda agar melakukan Routing agar setiap perangkat pada jaringan tersebut dapat terhubung.
 
 > Routing dilakukan pada router Strix, default routing pada Ostania dan Westalis sudah muncul secara otomatis
@@ -267,6 +380,68 @@ route add -net 10.27.7.136 netmask 255.255.255.248 gw 10.27.7.150
 <img width="426" alt="image" src="https://user-images.githubusercontent.com/103357229/206828862-ef98cd50-b21d-4154-a6f5-6adfd75046fd.png">
 
 
+# Poin D
+
+## Soal 1
+> Agar topologi yang kalian buat dapat mengakses keluar, kalian diminta untuk mengkonfigurasi Strix menggunakan iptables, tetapi Loid tidak ingin menggunakan MASQUERADE.
+
+### Strix
+```
+iptables -t nat -A POSTROUTING -s 10.27.0.0/21 -o eth0 -j SNAT --to-source 192.168.122.213
+```
+### Testing
+![image](https://user-images.githubusercontent.com/90978855/206842837-e6233686-dadf-4a71-9884-5d7e609c05d7.png)
+
+## Soal 2
+> Kalian diminta untuk melakukan drop semua TCP dan UDP dari luar Topologi kalian pada server yang merupakan DHCP Server demi menjaga keamanan.
+
+### Wise
+```
+apt-get install netcat
+```
+
+### Strix
+```
+apt-get install netcat
+iptables -A FORWARD -d 10.27.7.131/29 -i eth0 -p tcp -j DROP
+iptables -A FORWARD -d 10.27.7.131/29 -i eth0 -p udp -j DROP
+```
+
+### Testing
+Sebelum dijalankan <br>
+![image](https://user-images.githubusercontent.com/90978855/206842985-9fb7e126-c30b-456e-bce9-85c714997f5a.png) <br>
+Setelah dijalankan <br>
+![image](https://user-images.githubusercontent.com/90978855/206843033-d33ae32a-640e-4baf-909c-c61d0df5043e.png) <br>
+
+### NC Testing
+Di wise
+```
+nc -l -p 80
+Pesan Random
+```
+![image](https://user-images.githubusercontent.com/90978855/206843122-d791d871-e5c2-4e68-808c-1cf287997393.png)<br>
+
+Di Strix
+```
+nc 10.27.7.131 80
+```
+![image](https://user-images.githubusercontent.com/90978855/206843161-aa5e50eb-c934-418c-a676-25cc12c8a6f2.png) <br>
+
+## Soal 3
+> Loid meminta kalian untuk membatasi DHCP dan DNS Server hanya boleh menerima maksimal 2 koneksi ICMP secara bersamaan menggunakan iptables, selebihnya didrop.
+
+### WISE dan EDEN
+``` 
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 2 --connlimit-mask 0 -j DROP
+```
+
+### Testing
+Ping WISE / EDEN dari 3 client secara bersamaan <br>
+![image](https://user-images.githubusercontent.com/90978855/206843275-ce192f1e-fe92-490d-95be-34dd5432e93c.png)
+![image](https://user-images.githubusercontent.com/90978855/206843281-a16ca6a2-f117-4310-9205-fb89c5de18e9.png)
+![image](https://user-images.githubusercontent.com/90978855/206843288-4982cfa2-c3d2-40ed-9044-57d4b14b178e.png)<br>
+
+Ketika client ke-3 melakukan ping, maka semua ping di drop dan ping tidak dapat berlanjut.
 
 
 ## Soal 4
