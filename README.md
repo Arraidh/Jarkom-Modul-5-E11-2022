@@ -23,6 +23,15 @@
 
 > Akses menuju Web Server hanya diperbolehkan disaat jam kerja yaitu Senin sampai Jumat pada pukul 07.00 - 16.00.
 
+### Pada Eden
+
+```
+iptables -A INPUT -s 10.27.7.136/29 -m time --timestart 07:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+iptables -A INPUT -s 10.27.7.136/29 -j REJECT
+```
+
+### Pada SSS & Garden
+
 ```
 iptables -A INPUT -m time --timestart 07:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
 iptables -A INPUT -j REJECT
