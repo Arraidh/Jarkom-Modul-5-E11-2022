@@ -87,7 +87,7 @@ iptables -A LOGGING -j DROP
 service rsyslog restart
 ```
 
-Pertama, kita restart dulu DHCP di ``WISE```. Lalu tambahkan syntax ```sylog``` untuk melihat paket yang di drop.
+Pertama, kita restart dulu DHCP di ```WISE```. Lalu tambahkan syntax ```sylog``` untuk melihat paket yang di drop.
 
 #### Pada Node lainnya
 ```
