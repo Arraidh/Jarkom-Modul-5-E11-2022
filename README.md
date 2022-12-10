@@ -71,4 +71,47 @@ iptables -A PREROUTING -t nat -p tcp --dport 443 -d 10.27.7.139 -j DNAT --to-des
 #### Index.html di SSS
 ![image](https://user-images.githubusercontent.com/90848018/206828461-892e2532-8432-4e14-a6c9-81fe179b8376.png)
 
+## Soal 6
+> Karena Loid ingin tau paket apa saja yang di-drop, maka di setiap node server dan router ditambahkan logging paket yang di-drop dengan standard syslog level.
+
+#### Pada WISE  
+```
+service isc-dhcp-server restart
+service isc-dhcp-server restart
+
+iptables -N LOGGING
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 2 --connlimit-mask 0 -j LOGGING
+iptables -A LOGGING -j LOG --log-prefix "IPTables-Dropped: "
+iptables -A LOGGING -j DROP
+
+service rsyslog restart
+```
+
+Pertama, kita restart dulu DHCP di ``WISE```. Lalu tambahkan syntax ```sylog``` untuk melihat paket yang di drop.
+
+#### Pada Node lainnya
+```
+
+iptables -A INPUT -m time --timestart 07:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+
+iptables -N LOGGING
+iptables -A INPUT -j LOGGING
+iptables -A LOGGING -j LOG --log-prefix "IPTables-Rejected: "
+iptables -A LOGGING -j REJECT
+
+```
+
+#### Pada   WISE
+![image](https://user-images.githubusercontent.com/90848018/206829235-6d413fc6-cb1e-4107-9e71-ad5c17b326e9.png)
+
+#### Pada SSS
+![image](https://user-images.githubusercontent.com/90848018/206829276-2af5f393-3cbb-4798-aed6-5817b01f2cc6.png)
+
+#### Saat packet drop di Blackbell
+![image](https://user-images.githubusercontent.com/90848018/206829322-0031e208-304e-4680-b496-4093f4ecaefd.png)
+
+#### Log packet drop di Blackbell
+![image](https://user-images.githubusercontent.com/90848018/206829345-dc76d06f-3a7c-44d5-acae-a68b62d38964.png)
+
+
 
